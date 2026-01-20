@@ -205,9 +205,11 @@ This project is a **clean-room reimplementation from specifications** of the ori
 
 ### The Origin Story
 
+**TJ Fontaine** and **Vish Abrams** created and built the original crashcart at Oracle Cloud Infrastructure. The tool elegantly solved a real problem: how to debug minimal containers without rebuilding them with debugging tools.
+
 The name "crashcart" comes from the physical crash carts used in datacenters - wheeled toolkits containing monitors, keyboards, serial terminals, voltmeters, and other diagnostic equipment that technicians would roll up to server racks for troubleshooting. Like crash carts in hospital emergency rooms, these are mobile collections of resuscitative tools to bring systems back to life.
 
-The concept emerged from a lunch discussion at Joyent about the need for a toolkit to "dive into a running container" with familiar debugging tools - a way to bring a datacenter crash cart into the container world. The original tool was brilliantly executed by TJ and Vish to solve exactly this problem.
+According to my recollection, I was present during early lunch discussions at Joyent (with TJ and others) where we talked about the need for container debugging toolkits, and the datacenter crash cart analogy may have come up in those conversations. But the actual crashcart tool - the brilliant implementation and execution - that was all TJ and Vish.
 
 ### Why a Clean-Room Reimplementation?
 
