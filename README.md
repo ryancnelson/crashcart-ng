@@ -201,23 +201,29 @@ This modern version improves on the original crashcart:
 
 ## Credits and History
 
-This project is a modern reimplementation of the original [crashcart](https://github.com/oracle/crashcart) created by **TJ Fontaine** and **Vish Abrams** at Oracle Cloud Infrastructure (circa 2015-2017).
+This project is a **clean-room reimplementation from specifications** of the original [crashcart](https://github.com/oracle/crashcart) concept created by **TJ Fontaine** and **Vish Abrams** at Oracle Cloud Infrastructure (circa 2015-2017). This is not a fork - it's a fresh implementation built from the ground up using modern tools and practices.
 
 ### The Origin Story
 
 The name "crashcart" comes from the physical crash carts used in datacenters - wheeled toolkits containing monitors, keyboards, serial terminals, voltmeters, and other diagnostic equipment that technicians would roll up to server racks for troubleshooting. Like crash carts in hospital emergency rooms, these are mobile collections of resuscitative tools to bring systems back to life.
 
-The concept emerged from a lunch discussion at Joyent about the need for a toolkit to "dive into a running container" with familiar debugging tools - a way to bring a datacenter crash cart into the container world.
+The concept emerged from a lunch discussion at Joyent about the need for a toolkit to "dive into a running container" with familiar debugging tools - a way to bring a datacenter crash cart into the container world. The original tool was brilliantly executed by TJ and Vish to solve exactly this problem.
 
-### Modernization
+### Why a Clean-Room Reimplementation?
 
-This reimplementation was undertaken to:
-- Update from outdated Nix-based builds (Ubuntu 16.04, Nix 1.11.15 from 2017)
-- Adopt modern Rust practices (Rust 2021, async/await, proper error handling)
-- Expand the debugging toolkit and container runtime support
-- Simplify the build process and improve developer experience
+The original crashcart served its purpose well, but became difficult to maintain:
+- Nix-based builds (Ubuntu 16.04, Nix 1.11.15 from 2017) no longer build cleanly
+- Package sources and dependencies became unavailable over time
+- Build times exceeded 20 minutes
+- Limited to 16 basic tools
 
-Much of the modernization work was accomplished with AI-assisted development.
+This reimplementation preserves the core concept and CLI interface while:
+- Adopting modern Rust practices (Rust 2021, async/await, proper error handling)
+- Expanding to 40+ debugging tools with multi-runtime support
+- Simplifying builds using containerized approaches (3-5 minutes)
+- Improving developer experience with comprehensive documentation
+
+Much of the reimplementation work was accomplished with AI-assisted development.
 
 ## Contributing
 
