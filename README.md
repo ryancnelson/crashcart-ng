@@ -201,7 +201,7 @@ This modern version improves on the original crashcart:
 
 ## Credits and History
 
-This project is a **clean-room reimplementation from specifications** of the original [crashcart](https://github.com/oracle/crashcart) concept created by **TJ Fontaine** and **Vish Abrams** at Oracle Cloud Infrastructure (circa 2015-2017). This is not a fork - it's a fresh implementation built from the ground up using modern tools and practices.
+This project is a **reimplementation from specifications** inspired by the original [crashcart](https://github.com/oracle/crashcart) created by **TJ Fontaine** and **Vish Abrams** at Oracle Cloud Infrastructure (circa 2015-2017). This is not a fork - it's a fresh implementation built from the ground up using modern tools and practices. (I don't know if this qualifies legally as a "clean room" reimplementation, but it was built by studying the original tool's behavior and creating new specifications from that understanding.)
 
 ### The Origin Story
 
@@ -211,7 +211,7 @@ The name "crashcart" comes from the physical crash carts used in datacenters - w
 
 According to my recollection, I was present during early lunch discussions at Joyent (with TJ and others) where we talked about the need for container debugging toolkits, and the datacenter crash cart analogy may have come up in those conversations. But the actual crashcart tool - the brilliant implementation and execution - that was all TJ and Vish.
 
-### Why a Clean-Room Reimplementation?
+### Why a Reimplementation?
 
 The original crashcart served its purpose well, but became difficult to maintain:
 - Nix-based builds (Ubuntu 16.04, Nix 1.11.15 from 2017) no longer build cleanly
