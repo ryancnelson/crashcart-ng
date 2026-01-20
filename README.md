@@ -1,5 +1,7 @@
 # Modern Crashcart
 
+> **⚠️ NOTE**: Please don't struggle deploying this yet - I need to test this a lot more. I just blogged about this, so needed to make the repo public today.
+
 A modern, clean reimplementation of the crashcart container debugging tool. Crashcart allows you to sideload debugging utilities into running containers that don't have debugging tools installed.
 
 ## What is Crashcart?
