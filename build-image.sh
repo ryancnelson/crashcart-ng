@@ -40,8 +40,9 @@ echo "Mounted image at $MOUNT_DIR"
 # Create complete debugging environment
 echo "Creating selective debugging environment..."
 docker run --rm -v "$MOUNT_DIR:/output" ubuntu:22.04 sh -c '
-    # Install only essential debugging tools
+    # Install only essential debugging tools (and wget to download busybox)
     apt-get update && apt-get install -y \
+        wget \
         gdb \
         strace \
         ltrace \
@@ -96,6 +97,12 @@ docker run --rm -v "$MOUNT_DIR:/output" ubuntu:22.04 sh -c '
     
     # Copy essential binaries (with error handling)
     echo "Copying debugging binaries..."
+
+    # Download official static busybox
+    echo "Downloading official static busybox..."
+    wget -O /output/bin/busybox https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox 2>/dev/null || echo "Warning: busybox download failed"
+    chmod +x /output/bin/busybox 2>/dev/null || true
+
     cp /usr/bin/gdb /output/usr/bin/ 2>/dev/null || echo "Warning: gdb not found"
     cp /usr/bin/strace /output/usr/bin/ 2>/dev/null || echo "Warning: strace not found"
     cp /usr/bin/ltrace /output/usr/bin/ 2>/dev/null || echo "Warning: ltrace not found"

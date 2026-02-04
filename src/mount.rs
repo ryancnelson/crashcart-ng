@@ -24,7 +24,7 @@ impl MountManager {
 
     pub async fn mount_with_nsenter(&self, pid: u32, image_manager: &ImageManager) -> Result<()> {
         info!("Starting mount_with_nsenter for PID {}", pid);
-        
+
         // Verify image before mounting
         info!("Verifying image...");
         image_manager.verify_image()
@@ -37,42 +37,82 @@ impl MountManager {
         let loop_device = image_manager.setup_loop_device().await?;
         info!("Loop device setup successful: {}", loop_device);
 
-        // Use nsenter to execute mount commands in the target namespace
-        info!("Preparing mount script...");
-        let mount_script = format!(
-            r#"#!/bin/bash
-set -euo pipefail
+        // Mount the crashcart image temporarily to extract busybox
+        info!("Extracting busybox from crashcart image...");
+        let temp_mount = format!("/tmp/cc-mount-{}", pid);
+        tokio::process::Command::new("mkdir")
+            .args(["-p", &temp_mount])
+            .output().await
+            .context("Failed to create temporary mount point")?;
 
-# Check if already mounted
-if mountpoint -q /dev/crashcart 2>/dev/null; then
+        tokio::process::Command::new("mount")
+            .args(["-o", "ro", &loop_device, &temp_mount])
+            .output().await
+            .context("Failed to mount crashcart image temporarily")?;
+
+        // Copy busybox into the container's filesystem
+        let busybox_src = format!("{}/bin/busybox", temp_mount);
+        let busybox_dest = format!("/proc/{}/root/tmp/crashcart-busybox", pid);
+        tokio::process::Command::new("cp")
+            .args([&busybox_src, &busybox_dest])
+            .output().await
+            .context("Failed to copy busybox into container")?;
+
+        // Create symlinks for busybox applets we need
+        for applet in &["mount", "umount", "mkdir", "mknod", "grep", "rm"] {
+            let link_path = format!("/proc/{}/root/tmp/{}", pid, applet);
+            tokio::process::Command::new("ln")
+                .args(["-sf", "crashcart-busybox", &link_path])
+                .output().await.ok();
+        }
+
+        // Unmount temporary mount
+        tokio::process::Command::new("umount")
+            .arg(&temp_mount)
+            .output().await
+            .context("Failed to unmount temporary mount")?;
+
+        tokio::process::Command::new("rmdir")
+            .arg(&temp_mount)
+            .output().await.ok();
+
+        // Use nsenter to execute busybox mount commands in the target namespace
+        info!("Preparing mount script using busybox...");
+        let loop_minor = loop_device.strip_prefix("/dev/loop").unwrap_or("0");
+        let mount_script = format!(
+            r#"#!/bin/sh
+set -eu
+
+# Check if already mounted (using grep on mount output)
+if /tmp/mount | /tmp/grep -q '/dev/crashcart'; then
     echo "Crashcart already mounted"
     exit 0
 fi
 
 # Create mount directories
-mkdir -p /dev/cc-loop
-mkdir -p /dev/crashcart
+/tmp/mkdir -p /dev/cc-loop
+/tmp/mkdir -p /dev/crashcart
 
 # Mount tmpfs for loop devices if not already mounted
-if ! mountpoint -q /dev/cc-loop 2>/dev/null; then
-    mount -t tmpfs tmpfs /dev/cc-loop
+if ! /tmp/mount | /tmp/grep -q '/dev/cc-loop'; then
+    /tmp/mount -t tmpfs tmpfs /dev/cc-loop
 fi
 
 # Create device node
-mknod /dev/cc-loop/crashcart b 7 {} 2>/dev/null || true
+/tmp/mknod /dev/cc-loop/crashcart b 7 {minor} 2>/dev/null || true
 
 # Mount the filesystem
-mount -t ext4 -o ro /dev/cc-loop/crashcart /dev/crashcart
+/tmp/mount -t ext4 -o ro /dev/cc-loop/crashcart /dev/crashcart
 
 echo "Successfully mounted crashcart image"
 "#,
-            loop_device.strip_prefix("/dev/loop").unwrap_or("0")
+            minor = loop_minor
         );
 
         // Execute the mount script using nsenter
         let mut cmd = tokio::process::Command::new("nsenter");
         cmd.args(["-t", &pid.to_string(), "-m", "--"])
-            .args(["bash", "-c", &mount_script]);
+            .args(["sh", "-c", &mount_script]);
 
         let output = cmd.output().await
             .context("Failed to execute mount script with nsenter")?;
@@ -87,25 +127,34 @@ echo "Successfully mounted crashcart image"
     }
 
     pub async fn unmount_with_nsenter(&self, pid: u32, image_manager: &ImageManager) -> Result<()> {
-        // Use nsenter to execute unmount commands in the target namespace
-        let unmount_script = r#"#!/bin/bash
-set -euo pipefail
+        // Use nsenter to execute unmount commands in the target namespace with busybox
+        let unmount_script = r#"#!/bin/sh
+set -eu
 
-# Unmount the filesystem
-if mountpoint -q /dev/crashcart 2>/dev/null; then
-    umount /dev/crashcart
-    echo "Unmounted crashcart filesystem"
+# Unmount the filesystem if busybox symlinks are available
+if [ -x "/tmp/mount" ]; then
+    # Check if mounted using grep
+    if /tmp/mount | /tmp/grep -q '/dev/crashcart'; then
+        /tmp/umount /dev/crashcart
+        echo "Unmounted crashcart filesystem"
+    fi
+
+    # Clean up directories
+    /tmp/rm -rf /dev/crashcart
+
+    # Unmount tmpfs if mounted
+    if /tmp/mount | /tmp/grep -q '/dev/cc-loop'; then
+        /tmp/umount /dev/cc-loop
+    fi
+
+    /tmp/rm -rf /dev/cc-loop
+
+    # Clean up busybox and symlinks
+    /tmp/rm -f /tmp/crashcart-busybox /tmp/mount /tmp/umount /tmp/mkdir /tmp/mknod /tmp/grep /tmp/rm
+else
+    echo "Busybox not found, attempting cleanup anyway"
+    rm -rf /dev/crashcart /dev/cc-loop /tmp/crashcart-busybox /tmp/mount /tmp/umount /tmp/mkdir /tmp/mknod /tmp/grep /tmp/rm 2>/dev/null || true
 fi
-
-# Clean up directories
-rm -rf /dev/crashcart
-
-# Unmount tmpfs if mounted
-if mountpoint -q /dev/cc-loop 2>/dev/null; then
-    umount /dev/cc-loop
-fi
-
-rm -rf /dev/cc-loop
 
 echo "Successfully cleaned up crashcart mount"
 "#;
@@ -113,7 +162,7 @@ echo "Successfully cleaned up crashcart mount"
         // Execute the unmount script using nsenter
         let mut cmd = tokio::process::Command::new("nsenter");
         cmd.args(["-t", &pid.to_string(), "-m", "--"])
-            .args(["bash", "-c", unmount_script]);
+            .args(["sh", "-c", unmount_script]);
 
         let output = cmd.output().await
             .context("Failed to execute unmount script with nsenter")?;
