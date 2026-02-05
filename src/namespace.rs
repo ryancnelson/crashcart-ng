@@ -83,7 +83,7 @@ pub async fn exec_in_namespace(pid: u32, command: &[String], env_var: Option<(&s
         vec![
             "/dev/crashcart/bin/ash".to_string(),
             "-c".to_string(),
-            ". /dev/crashcart/.crashcartrc && exec ash -i".to_string(),
+            "ENV=/dev/crashcart/.crashcartrc exec ash -i".to_string(),
         ]
     } else {
         // For custom commands, check if they need the dynamic linker
