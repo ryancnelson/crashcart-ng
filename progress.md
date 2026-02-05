@@ -28,11 +28,11 @@ Goal: Use ldd to discover and bundle ALL required libraries properly (target: >3
 
 ### Steps
 
-- [ ] Step 1: Write test script for library bundling
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Fix library discovery in build script
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 1: Write test script for library bundling
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Fix library discovery in build script
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Commit
 
 ---
 
