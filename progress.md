@@ -38,7 +38,23 @@ Goal: Use ldd to discover and bundle ALL required libraries properly (target: >3
 
 ## Task 2: Fix Shell Initialization (Bash vs Ash)
 
-Status: Not Started
+Goal: Use BusyBox ash shell instead of bash for reliability (ash is static, bash needs libraries)
+
+### Steps
+
+- [x] Step 1: Write test for shell execution
+- [x] Step 2: Run test to verify current state
+- [x] Step 3: Update crashcart to use ash as default shell
+- [x] Step 4: Update .crashcartrc to work with ash
+- [x] Step 5: Update crashcart to source profile instead of --rcfile
+- [x] Step 6: Run test to verify it passes
+- [x] Step 7: Commit
+
+---
+
+## Task 2: Fix Shell Initialization (Bash vs Ash)
+
+Status: ✅ **COMPLETED**
 
 ---
 

@@ -79,22 +79,23 @@ impl Drop for NamespaceGuard {
 /// Execute a command in the target process's namespaces
 pub async fn exec_in_namespace(pid: u32, command: &[String], env_var: Option<(&str, &str)>) -> Result<i32> {
     let cmd = if command.is_empty() {
+        // Use BusyBox ash shell (static, always works) with crashcartrc
         vec![
-            "/dev/crashcart/lib64/ld-linux-x86-64.so.2".to_string(),
-            "--library-path".to_string(),
-            "/dev/crashcart/lib:/dev/crashcart/lib64:/dev/crashcart/usr/lib:/dev/crashcart/usr/lib64".to_string(),
-            "/dev/crashcart/usr/bin/bash".to_string(),
-            "--rcfile".to_string(),
-            "/dev/crashcart/.crashcartrc".to_string(),
-            "-i".to_string(),
+            "/dev/crashcart/bin/ash".to_string(),
+            "-c".to_string(),
+            ". /dev/crashcart/.crashcartrc && exec ash -i".to_string(),
         ]
     } else {
-        // For custom commands, also use the dynamic linker
-        let mut cmd_vec = vec![
-            "/dev/crashcart/lib64/ld-linux-x86-64.so.2".to_string(),
-            "--library-path".to_string(),
-            "/dev/crashcart/lib:/dev/crashcart/lib64:/dev/crashcart/usr/lib:/dev/crashcart/usr/lib64".to_string(),
-        ];
+        // For custom commands, check if they need the dynamic linker
+        let mut cmd_vec = Vec::new();
+
+        // If command starts with /dev/crashcart/usr/bin/, prepend musl loader
+        if command[0].starts_with("/dev/crashcart/usr/bin/") {
+            cmd_vec.push("/dev/crashcart/lib/ld-musl-x86_64.so.1".to_string());
+            cmd_vec.push("--library-path".to_string());
+            cmd_vec.push("/dev/crashcart/lib:/dev/crashcart/usr/lib".to_string());
+        }
+
         cmd_vec.extend(command.iter().cloned());
         cmd_vec
     };
