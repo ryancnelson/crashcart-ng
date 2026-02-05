@@ -67,7 +67,7 @@ fi
 echo
 echo "=== CREATING RELEASE ARTIFACTS ==="
 
-RELEASE_DIR="release-$VERSION"
+RELEASE_DIR="crashcart-ng-$VERSION"
 mkdir -p "$RELEASE_DIR"
 
 # Copy essential files
