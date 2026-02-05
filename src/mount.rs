@@ -37,9 +37,14 @@ impl MountManager {
         let loop_device = image_manager.setup_loop_device().await?;
         info!("Loop device setup successful: {}", loop_device);
 
-        // Mount the crashcart image temporarily to extract busybox
-        info!("Extracting busybox from crashcart image...");
-        let temp_mount = format!("/tmp/cc-mount-{}", pid);
+        // Extract loop device minor number for mknod
+        let loop_minor = loop_device.strip_prefix("/dev/loop").unwrap_or("0");
+
+        info!("Mounting crashcart using hybrid approach for ultra-minimal containers...");
+
+        // Mount crashcart image temporarily to extract BusyBox
+        info!("Extracting BusyBox from crashcart image...");
+        let temp_mount = format!("/tmp/cc-extract-{}", pid);
         tokio::process::Command::new("mkdir")
             .args(["-p", &temp_mount])
             .output().await
@@ -50,21 +55,36 @@ impl MountManager {
             .output().await
             .context("Failed to mount crashcart image temporarily")?;
 
-        // Copy busybox into the container's filesystem
+        // Create container directories using host-side filesystem access via /proc/{pid}/root
+        info!("Creating mount directories and copying BusyBox...");
+        let container_tmp = format!("/proc/{}/root/tmp", pid);
+        let container_dev_cc_loop = format!("/proc/{}/root/dev/cc-loop", pid);
+        let container_dev_crashcart = format!("/proc/{}/root/dev/crashcart", pid);
+
+        // Ensure /tmp exists in container
+        tokio::process::Command::new("mkdir")
+            .args(["-p", &container_tmp])
+            .output().await
+            .context("Failed to create container /tmp directory")?;
+
+        // Create mount directories
+        tokio::process::Command::new("mkdir")
+            .args(["-p", &container_dev_cc_loop])
+            .output().await
+            .context("Failed to create /dev/cc-loop directory")?;
+
+        tokio::process::Command::new("mkdir")
+            .args(["-p", &container_dev_crashcart])
+            .output().await
+            .context("Failed to create /dev/crashcart directory")?;
+
+        // Copy BusyBox to container /tmp
         let busybox_src = format!("{}/bin/busybox", temp_mount);
-        let busybox_dest = format!("/proc/{}/root/tmp/crashcart-busybox", pid);
+        let busybox_dest = format!("{}/busybox", container_tmp);
         tokio::process::Command::new("cp")
             .args([&busybox_src, &busybox_dest])
             .output().await
-            .context("Failed to copy busybox into container")?;
-
-        // Create symlinks for busybox applets we need
-        for applet in &["mount", "umount", "mkdir", "mknod", "grep", "rm"] {
-            let link_path = format!("/proc/{}/root/tmp/{}", pid, applet);
-            tokio::process::Command::new("ln")
-                .args(["-sf", "crashcart-busybox", &link_path])
-                .output().await.ok();
-        }
+            .context("Failed to copy BusyBox to container")?;
 
         // Unmount temporary mount
         tokio::process::Command::new("umount")
@@ -76,107 +96,124 @@ impl MountManager {
             .arg(&temp_mount)
             .output().await.ok();
 
-        // Use nsenter to execute busybox mount commands in the target namespace
-        info!("Preparing mount script using busybox...");
-        let loop_minor = loop_device.strip_prefix("/dev/loop").unwrap_or("0");
-        let mount_script = format!(
-            r#"#!/bin/sh
-set -eu
+        // Now use the copied BusyBox for all mount operations via nsenter
+        info!("Mounting tmpfs using copied BusyBox...");
+        let mount_tmpfs = tokio::process::Command::new("nsenter")
+            .args(["-t", &pid.to_string(), "-m", "--", "/tmp/busybox", "mount", "-t", "tmpfs", "tmpfs", "/dev/cc-loop"])
+            .output().await
+            .context("Failed to mount tmpfs with BusyBox")?;
 
-# Check if already mounted (using grep on mount output)
-if /tmp/mount | /tmp/grep -q '/dev/crashcart'; then
-    echo "Crashcart already mounted"
-    exit 0
-fi
-
-# Create mount directories
-/tmp/mkdir -p /dev/cc-loop
-/tmp/mkdir -p /dev/crashcart
-
-# Mount tmpfs for loop devices if not already mounted
-if ! /tmp/mount | /tmp/grep -q '/dev/cc-loop'; then
-    /tmp/mount -t tmpfs tmpfs /dev/cc-loop
-fi
-
-# Create device node
-/tmp/mknod /dev/cc-loop/crashcart b 7 {minor} 2>/dev/null || true
-
-# Mount the filesystem
-/tmp/mount -t ext4 -o ro /dev/cc-loop/crashcart /dev/crashcart
-
-echo "Successfully mounted crashcart image"
-"#,
-            minor = loop_minor
-        );
-
-        // Execute the mount script using nsenter
-        let mut cmd = tokio::process::Command::new("nsenter");
-        cmd.args(["-t", &pid.to_string(), "-m", "--"])
-            .args(["sh", "-c", &mount_script]);
-
-        let output = cmd.output().await
-            .context("Failed to execute mount script with nsenter")?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("Mount script failed: {}", stderr));
+        if !mount_tmpfs.status.success() {
+            let stderr = String::from_utf8_lossy(&mount_tmpfs.stderr);
+            return Err(anyhow!("Failed to mount tmpfs with BusyBox: {}", stderr));
         }
 
-        info!("Successfully mounted crashcart image using nsenter");
+        // Create device node using copied BusyBox
+        info!("Creating device node using BusyBox...");
+        let mknod_cmd = tokio::process::Command::new("nsenter")
+            .args(["-t", &pid.to_string(), "-m", "--", "/tmp/busybox", "mknod", "/dev/cc-loop/crashcart", "b", "7", loop_minor])
+            .output().await
+            .context("Failed to create device node with BusyBox")?;
+
+        if !mknod_cmd.status.success() {
+            let stderr = String::from_utf8_lossy(&mknod_cmd.stderr);
+            if !stderr.contains("exists") {
+                warn!("mknod with BusyBox failed: {}", stderr);
+            }
+        }
+
+        // Mount the crashcart filesystem using copied BusyBox
+        info!("Mounting crashcart filesystem using BusyBox...");
+        let mount_fs = tokio::process::Command::new("nsenter")
+            .args(["-t", &pid.to_string(), "-m", "--", "/tmp/busybox", "mount", "-t", "ext4", "-o", "ro", "/dev/cc-loop/crashcart", "/dev/crashcart"])
+            .output().await
+            .context("Failed to mount crashcart filesystem with BusyBox")?;
+
+        if !mount_fs.status.success() {
+            let stderr = String::from_utf8_lossy(&mount_fs.stderr);
+            return Err(anyhow!("Failed to mount crashcart filesystem with BusyBox: {}", stderr));
+        }
+
+        // Clean up temporary BusyBox
+        tokio::process::Command::new("rm")
+            .args(["-f", &busybox_dest])
+            .output().await.ok();
+
+        info!("Successfully mounted crashcart using hybrid approach");
         Ok(())
     }
 
     pub async fn unmount_with_nsenter(&self, pid: u32, image_manager: &ImageManager) -> Result<()> {
-        // Use nsenter to execute unmount commands in the target namespace with busybox
-        let unmount_script = r#"#!/bin/sh
-set -eu
+        info!("Starting unmount_with_nsenter for PID {}", pid);
 
-# Unmount the filesystem if busybox symlinks are available
-if [ -x "/tmp/mount" ]; then
-    # Check if mounted using grep
-    if /tmp/mount | /tmp/grep -q '/dev/crashcart'; then
-        /tmp/umount /dev/crashcart
-        echo "Unmounted crashcart filesystem"
-    fi
+        // Try to use BusyBox from crashcart if it's still mounted, otherwise use hybrid approach
+        let busybox_path = "/dev/crashcart/bin/busybox";
+        let temp_busybox_path = "/tmp/busybox-cleanup";
 
-    # Clean up directories (silently, directory should be empty after unmount)
-    /tmp/rm -rf /dev/crashcart 2>/dev/null || true
+        // Check if crashcart is still mounted by trying to access BusyBox
+        let busybox_available = tokio::process::Command::new("nsenter")
+            .args(["-t", &pid.to_string(), "-m", "--", "test", "-x", busybox_path])
+            .output().await
+            .map_or(false, |output| output.status.success());
 
-    # Unmount tmpfs if mounted
-    if /tmp/mount | /tmp/grep -q '/dev/cc-loop'; then
-        /tmp/umount /dev/cc-loop
-    fi
+        let cleanup_busybox = if busybox_available {
+            info!("Using mounted crashcart BusyBox for unmount...");
+            busybox_path.to_string()
+        } else {
+            info!("Crashcart not available, skipping BusyBox unmount commands...");
+            // If crashcart isn't mounted, the main cleanup will happen via host-side operations below
+            "".to_string()
+        };
 
-    /tmp/rm -rf /dev/cc-loop 2>/dev/null || true
+        // Unmount filesystems if BusyBox is available
+        if !cleanup_busybox.is_empty() {
+            info!("Unmounting crashcart filesystem...");
+            let umount_fs = tokio::process::Command::new("nsenter")
+                .args(["-t", &pid.to_string(), "-m", "--", &cleanup_busybox, "umount", "/dev/crashcart"])
+                .output().await;
 
-    # Clean up busybox and symlinks
-    /tmp/rm -f /tmp/crashcart-busybox /tmp/mount /tmp/umount /tmp/mkdir /tmp/mknod /tmp/grep /tmp/rm
-else
-    echo "Busybox not found, attempting cleanup anyway"
-    rm -rf /dev/crashcart /dev/cc-loop /tmp/crashcart-busybox /tmp/mount /tmp/umount /tmp/mkdir /tmp/mknod /tmp/grep /tmp/rm 2>/dev/null || true
-fi
+            if let Ok(output) = umount_fs {
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    warn!("Failed to unmount crashcart filesystem: {}", stderr);
+                } else {
+                    info!("Unmounted crashcart filesystem");
+                }
+            }
 
-echo "Successfully cleaned up crashcart mount"
-"#;
+            info!("Unmounting tmpfs...");
+            let umount_tmpfs = tokio::process::Command::new("nsenter")
+                .args(["-t", &pid.to_string(), "-m", "--", &cleanup_busybox, "umount", "/dev/cc-loop"])
+                .output().await;
 
-        // Execute the unmount script using nsenter
-        let mut cmd = tokio::process::Command::new("nsenter");
-        cmd.args(["-t", &pid.to_string(), "-m", "--"])
-            .args(["sh", "-c", unmount_script]);
-
-        let output = cmd.output().await
-            .context("Failed to execute unmount script with nsenter")?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!("Unmount script failed: {}", stderr);
+            if let Ok(output) = umount_tmpfs {
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    warn!("Failed to unmount tmpfs: {}", stderr);
+                }
+            }
+        } else {
+            info!("Skipping BusyBox unmount commands (BusyBox not available)");
         }
+
+        // Clean up directories silently using host-side rm via /proc/{pid}/root
+        info!("Cleaning up directories...");
+        let crashcart_path = format!("/proc/{}/root/dev/crashcart", pid);
+        let cc_loop_path = format!("/proc/{}/root/dev/cc-loop", pid);
+
+        tokio::process::Command::new("rm")
+            .args(["-rf", &crashcart_path])
+            .output().await.ok();
+
+        tokio::process::Command::new("rm")
+            .args(["-rf", &cc_loop_path])
+            .output().await.ok();
 
         // Clean up loop device
         let mut image_manager = image_manager.clone();
         image_manager.cleanup_loop_device().await?;
 
-        info!("Successfully unmounted crashcart using nsenter");
+        info!("Successfully unmounted crashcart using hybrid approach");
         Ok(())
     }
 
