@@ -6,7 +6,7 @@ echo "========================================"
 echo "CRASHCART-NG RELEASE PREPARATION"
 echo "========================================"
 
-VERSION="v0.4.0-production-ready"
+VERSION="v0.4.1"
 RELEASE_DATE=$(date +"%Y-%m-%d")
 
 echo "Preparing release: $VERSION"
