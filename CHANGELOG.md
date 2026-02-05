@@ -48,6 +48,11 @@ This release represents a complete reimplementation with musl-based universal co
 - **GitHub release deployment** with automated binary distribution
 - **Test-driven development** with iterate-bot methodology
 
+### ⚠️ Current Limitations
+- **x86_64 architecture only** - ARM64 and other architectures not yet supported
+- **Static binaries** are x86_64-specific (BusyBox, curl)
+- **Alpine packages** built for x86_64 musl target
+
 ## [v0.2.0] - Previous Release
 
 ### Issues Identified

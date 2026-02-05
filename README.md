@@ -18,6 +18,7 @@ Crashcart solves a common problem: **how do you debug a minimal container that d
 - **Automatic cleanup** - loop devices and mounts cleaned up automatically on exit
 - **Silent operation** - no error noise or cleanup spam
 - **Production-ready** - thoroughly tested with comprehensive integration test suite
+- **x86_64 optimized** - currently built for x86_64 architecture
 
 ## Quick Start
 
@@ -37,7 +38,7 @@ cargo build --release
 ./build-image-musl.sh
 ```
 
-This creates a `crashcart.img` file containing a self-contained musl-based debugging environment that works universally across all container types (Alpine, Ubuntu, scratch, distroless).
+This creates a `crashcart.img` file containing a self-contained musl-based debugging environment that works universally across all container types (Alpine, Ubuntu, scratch, distroless) on **x86_64 systems**.
 
 ### 3. Debug a container
 
@@ -191,9 +192,20 @@ All tools are either statically linked or use bundled musl libraries for univers
 ## Requirements
 
 - Linux with namespace support
+- **x86_64 architecture** (ARM64/other architectures not yet supported)
 - Root privileges (for namespace manipulation)
 - One of: Docker, Podman, or containerd
 - Loop device support (`/dev/loop*`)
+
+## Current Limitations
+
+- **Architecture**: Only x86_64 Linux is currently supported
+  - ARM64/aarch64 support planned for future releases
+  - Other architectures (RISC-V, etc.) not yet supported
+- **Static binaries**: BusyBox and curl are downloaded as x86_64 static binaries
+- **Alpine packages**: Musl tools are built from x86_64 Alpine packages
+
+**Note**: The core Rust binary can be cross-compiled for other architectures, but the debugging image (`crashcart.img`) currently contains x86_64-specific static binaries and Alpine packages.
 
 ## Testing
 
@@ -226,8 +238,8 @@ This project follows TDD methodology:
 - ✅ Integration tests with real containers
 
 ### Production Validation
-Successfully tested in:
-- AWS ECS container hosts
+Successfully tested on x86_64 systems in:
+- AWS ECS container hosts (x86_64)
 - Docker containers (Alpine, Ubuntu, busybox)
 - Minimal/scratch containers
 - Real production workloads (gemstash, etc.)
