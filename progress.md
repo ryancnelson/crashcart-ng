@@ -19,6 +19,9 @@ Working On: Task 1 - Fix Library Path Discovery and Bundling
 - [x] Created implementation plan
 - [x] Committed plan to repository
 - [x] Set up progress tracking
+- [x] ✅ **Task 1: Fixed library bundling** - Now bundles 15+ libraries including readline/ncurses
+- [x] ✅ **Task 2: Fixed shell initialization** - Now uses reliable static ash shell
+- [x] ✅ **Task 3: Added automatic loop device cleanup** - Prevents leaks on exit
 
 ---
 
@@ -60,7 +63,23 @@ Status: ✅ **COMPLETED**
 
 ## Task 3: Add Loop Device Cleanup
 
-Status: Not Started
+Goal: Automatically cleanup loop devices on crashcart exit to prevent leaks
+
+### Steps
+
+- [x] Step 1: Write test for cleanup
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Add cleanup module
+- [x] Step 4: Integrate cleanup into main.rs
+- [x] Step 5: Add cleanup to lib.rs exports
+- [x] Step 6: Run test to verify it passes
+- [x] Step 7: Commit
+
+---
+
+## Task 3: Add Loop Device Cleanup
+
+Status: ✅ **COMPLETED**
 
 ---
 

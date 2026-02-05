@@ -3,11 +3,13 @@ use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
 
+mod cleanup;
 mod container;
 mod image;
 mod mount;
 mod namespace;
 
+use cleanup::CleanupGuard;
 use container::ContainerRuntime;
 use image::ImageManager;
 use mount::MountManager;
@@ -46,6 +48,9 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Setup cleanup guard
+    let _cleanup = CleanupGuard;
+
     let cli = Cli::parse();
 
     // Initialize logging

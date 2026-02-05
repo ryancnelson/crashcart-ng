@@ -1,3 +1,4 @@
+pub mod cleanup;
 pub mod container;
 pub mod image;
 pub mod mount;
