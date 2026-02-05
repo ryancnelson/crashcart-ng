@@ -296,9 +296,9 @@ alias grep='grep --color=auto'
 alias vi='vim'
 
 # Debugging aliases with namespace awareness
-alias gdb-target="nsenter -t $TARGET_PID -p -n -i -u -- gdb -p"
-alias strace-target="nsenter -t $TARGET_PID -p -n -i -u -- strace -p"
-alias lsof-target="nsenter -t $TARGET_PID -p -n -i -u -- lsof -p"
+alias gdb_target="nsenter -t $TARGET_PID -p -n -i -u -- gdb -p"
+alias strace_target="nsenter -t $TARGET_PID -p -n -i -u -- strace -p"
+alias lsof_target="nsenter -t $TARGET_PID -p -n -i -u -- lsof -p"
 
 # Network debugging
 alias netconns='ss -tuln'
@@ -306,49 +306,50 @@ alias ports='ss -tln'
 alias listen='ss -tln'
 alias connections='ss -tu'
 
-# Enhanced debugging functions
-debug-process() {
-    local pid=${1:-1}
-    echo "=== Debugging Process $pid in Target Container ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- gdb -p "$pid"
+# Enhanced debugging functions (ash-compatible)
+debug_process() {
+    _pid=${1:-1}
+    echo "=== Debugging Process $_pid in Target Container ==="
+    nsenter -t "$TARGET_PID" -p -n -i -u -- gdb -p "$_pid"
 }
 
-trace-process() {
-    local pid=${1:-1}
-    echo "=== Tracing Process $pid in Target Container ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -p "$pid" "${@:2}"
+trace_process() {
+    _pid=${1:-1}
+    echo "=== Tracing Process $_pid in Target Container ==="
+    shift
+    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -p "$_pid" "$@"
 }
 
-trace-syscalls() {
-    local pid=${1:-1}
-    echo "=== System Call Trace for Process $pid ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -e trace=all -p "$pid"
+trace_syscalls() {
+    _pid=${1:-1}
+    echo "=== System Call Trace for Process $_pid ==="
+    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -e trace=all -p "$_pid"
 }
 
-trace-network() {
-    local pid=${1:-1}
-    echo "=== Network System Calls for Process $pid ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -e trace=network -p "$pid"
+trace_network() {
+    _pid=${1:-1}
+    echo "=== Network System Calls for Process $_pid ==="
+    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -e trace=network -p "$_pid"
 }
 
-trace-files() {
-    local pid=${1:-1}
-    echo "=== File System Calls for Process $pid ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -e trace=file -p "$pid"
+trace_files() {
+    _pid=${1:-1}
+    echo "=== File System Calls for Process $_pid ==="
+    nsenter -t "$TARGET_PID" -p -n -i -u -- strace -e trace=file -p "$_pid"
 }
 
-list-processes() {
+list_processes() {
     echo "=== Processes in Target Container ==="
     nsenter -t "$TARGET_PID" -p -n -i -u -- ps aux 2>/dev/null || psinspect
 }
 
-list-files() {
-    local pid=${1:-1}
-    echo "=== Open Files for Process $pid ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- lsof -p "$pid"
+list_files() {
+    _pid=${1:-1}
+    echo "=== Open Files for Process $_pid ==="
+    nsenter -t "$TARGET_PID" -p -n -i -u -- lsof -p "$_pid"
 }
 
-network-status() {
+network_status() {
     echo "=== Network Status in Target Container ==="
     nsenter -t "$TARGET_PID" -p -n -i -u -- ss -tuln
     echo
@@ -356,23 +357,25 @@ network-status() {
     nsenter -t "$TARGET_PID" -p -n -i -u -- ip addr show
 }
 
-network-capture() {
-    local interface=${1:-any}
-    echo "=== Capturing Network Traffic on $interface ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -- tcpdump -i "$interface" -n "${@:2}"
+network_capture() {
+    _interface=${1:-any}
+    echo "=== Capturing Network Traffic on $_interface ==="
+    shift
+    nsenter -t "$TARGET_PID" -p -n -i -u -- tcpdump -i "$_interface" -n "$@"
 }
 
-container-shell() {
+container_shell() {
     echo "=== Entering Target Container Shell with Full Tools ==="
-    nsenter -t "$TARGET_PID" -p -n -i -u -m -- bash
+    nsenter -t "$TARGET_PID" -p -n -i -u -m -- ash
 }
 
-memory-info() {
+memory_info() {
     echo "=== Memory Information ==="
     free -h 2>/dev/null || cat /proc/meminfo | head -5
     echo
-    echo "=== Memory Map for Process ${1:-1} ==="
-    cat /proc/${1:-1}/maps 2>/dev/null | head -20 || echo "Process not accessible"
+    _mpid=${1:-1}
+    echo "=== Memory Map for Process $_mpid ==="
+    cat /proc/$_mpid/maps 2>/dev/null | head -20 || echo "Process not accessible"
 }
 
 sysinfo() {
@@ -382,15 +385,15 @@ sysinfo() {
     echo "Tools: Static + musl with bundled libraries"
     uname -a 2>/dev/null || echo "System info not available"
     echo
-    list-processes
+    list_processes
     echo
-    network-status
+    network_status
     echo
-    memory-info
+    memory_info
 }
 
 # Tool availability checker
-check-tools() {
+check_tools() {
     echo "=== Self-Contained Tool Availability ==="
     echo "Static tools (universal compatibility):"
     for tool in busybox sh ls ps find grep curl; do
@@ -423,17 +426,18 @@ check-tools() {
     echo
     echo "Usage examples:"
     echo "  gdb -p 123             # Debug PID 123 (uses bundled libs)"
-    echo "  debug-process 123      # Debug with namespace awareness"
-    echo "  trace-process 123      # Trace with strace"
-    echo "  network-capture eth0   # Capture packets"
-    echo "  container-shell        # Enter target container"
+    echo "  debug_process 123      # Debug with namespace awareness"
+    echo "  trace_process 123      # Trace with strace"
+    echo "  network_capture eth0   # Capture packets"
+    echo "  container_shell        # Enter target container"
     echo ""
     echo "All tools are self-contained with zero external dependencies!"
 }
 
 # Quick process finder
 findproc() {
-    psinspect | grep -i "$1" | grep -v grep
+    _pattern="$1"
+    psinspect | grep -i "$_pattern" | grep -v grep
 }
 
 echo "Self-Contained Musl Crashcart loaded!"
@@ -441,21 +445,21 @@ echo "Target container PID: $TARGET_PID"
 echo "Environment: Alpine/musl with ALL dependencies bundled"
 echo ""
 echo "Quick start:"
-echo "  check-tools     - See all available tools"
+echo "  check_tools     - See all available tools"
 echo "  sysinfo         - System overview"
-echo "  list-processes  - Show all processes"
-echo "  network-status  - Network information"
+echo "  list_processes  - Show all processes"
+echo "  network_status  - Network information"
 echo ""
 echo "Zero external dependencies - tools work in ANY container!"
 EOF
 
 # Create simple profile loader
 sudo tee "$MOUNT_DIR/profile" > /dev/null << 'EOF'
-#!/bin/bash
+#!/bin/ash
 # Crashcart musl profile loader
 export PATH="/dev/crashcart/bin:/dev/crashcart/usr/bin:$PATH"
 export LD_LIBRARY_PATH="/dev/crashcart/lib:$LD_LIBRARY_PATH"
-source /dev/crashcart/.crashcartrc
+. /dev/crashcart/.crashcartrc
 EOF
 
 sudo chmod +x "$MOUNT_DIR/profile"
