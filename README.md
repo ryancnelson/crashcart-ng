@@ -20,19 +20,44 @@ Crashcart solves a common problem: **how do you debug a minimal container that d
 - **Production-ready** - thoroughly tested with comprehensive integration test suite
 - **x86_64 optimized** - currently built for x86_64 architecture
 
-## Quick Start
+## Installation
 
-### 1. Build the tool
+### Download Pre-Built Release (Recommended)
+
+The easiest way to get started is to download a pre-built release from GitHub:
 
 ```bash
-# Build release version (recommended)
+# Download the latest release
+wget https://github.com/ryancnelson/crashcart-ng/releases/latest/download/crashcart-ng-v0.4.1.tar.gz
+
+# Extract
+tar -xzf crashcart-ng-v0.4.1.tar.gz
+cd crashcart-ng-v0.4.1
+
+# Optional: Install to system (copies to /usr/local/bin and /usr/local/share)
+sudo ./install.sh
+
+# Or use directly from the extracted directory
+sudo ./crashcart <container-id>
+```
+
+That's it! The release includes both the `crashcart` binary and the `crashcart.img` debugging environment - ready to use immediately.
+
+### Building from Source
+
+If you want to build from source instead:
+
+**1. Build the tool**
+
+```bash
+# Build release version
 cargo build --release
 
 # Or use the convenience script
 ./build.sh --release
 ```
 
-### 2. Build the debugging image
+**2. Build the debugging image**
 
 ```bash
 ./build-image-musl.sh
@@ -40,7 +65,9 @@ cargo build --release
 
 This creates a `crashcart.img` file containing a self-contained musl-based debugging environment that works universally across all container types (Alpine, Ubuntu, scratch, distroless) on **x86_64 systems**.
 
-### 3. Debug a container
+## Quick Start
+
+### Debug a container
 
 ```bash
 # Interactive debugging session
