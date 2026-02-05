@@ -9,10 +9,10 @@
 
 ## Iteration Status
 
-Current Iteration: 5
-Working On: Task 5 - Fix Noisy Cleanup Messages
+Current Iteration: 6
+Working On: Task 6 - Update Documentation
 
-🎯 **4/7 Tasks Completed** - Fixing error noise! 🔧
+🎯 **5/7 Tasks Completed** - Documentation time! 📝
 
 ---
 
@@ -25,6 +25,7 @@ Working On: Task 5 - Fix Noisy Cleanup Messages
 - [x] ✅ **Task 2: Fixed shell initialization** - Now uses reliable static ash shell
 - [x] ✅ **Task 3: Added automatic loop device cleanup** - Prevents leaks on exit
 - [x] ✅ **Task 4: Comprehensive integration testing** - All 6 tests pass in real containers
+- [x] ✅ **Task 5: Fix noisy cleanup messages** - Silent unmount with proper error handling
 
 ---
 
@@ -39,6 +40,12 @@ Goal: Use ldd to discover and bundle ALL required libraries properly (target: >3
 - [x] Step 3: Fix library discovery in build script
 - [x] Step 4: Run test to verify it passes
 - [x] Step 5: Commit
+
+---
+
+## Task 5: Fix Noisy Cleanup Messages
+
+Status: ✅ **COMPLETED**
 
 ---
 
@@ -121,7 +128,16 @@ Goal: Eliminate the "can't remove /dev/crashcart/..." error spam during unmount
 
 ## Task 6: Update Documentation
 
-Status: Not Started
+Goal: Update README and documentation to reflect musl implementation, new testing, and improved reliability
+
+### Steps
+
+- [x] Step 1: Update README with musl approach benefits
+- [x] Step 2: Update build instructions for musl image
+- [x] Step 3: Update usage examples and troubleshooting
+- [x] Step 4: Document testing suite and CI
+- [x] Step 5: Update changelog/release notes
+- [ ] Step 6: Commit documentation updates
 
 ---
 

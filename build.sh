@@ -17,5 +17,5 @@ fi
 echo "Build complete! Binary: ./crashcart"
 echo
 echo "Next steps:"
-echo "1. Build the debugging image: ./build-image.sh"
+echo "1. Build the musl debugging image: ./build-image-musl.sh"
 echo "2. Run crashcart: sudo ./crashcart <container-id>"

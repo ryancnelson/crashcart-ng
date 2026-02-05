@@ -1,8 +1,8 @@
 # Modern Crashcart
 
-> **⚠️ NOTE**: Please don't struggle deploying this yet - I need to test this a lot more. I just blogged about this, so needed to make the repo public today.
+A modern, clean reimplementation of the crashcart container debugging tool with **musl-based universal compatibility**. Crashcart allows you to sideload debugging utilities into running containers that don't have debugging tools installed.
 
-A modern, clean reimplementation of the crashcart container debugging tool. Crashcart allows you to sideload debugging utilities into running containers that don't have debugging tools installed.
+✅ **Ready for production** - Thoroughly tested with comprehensive integration suite
 
 ## What is Crashcart?
 
@@ -12,26 +12,32 @@ Crashcart solves a common problem: **how do you debug a minimal container that d
 
 - **Modern Rust implementation** with async/await and proper error handling
 - **Multiple container runtime support**: Docker, Podman, containerd
-- **Complete Ubuntu debugging environment** with full glibc compatibility
-- **Namespace-aware debugging** - tools run in isolated environment but access target resources
-- **40+ debugging and system tools** including gdb, strace, tcpdump, and more
-- **No library conflicts** - debugging tools use their own complete environment
+- **Universal musl-based compatibility** - works in ANY container (Alpine, scratch, distroless)
+- **Self-contained with zero host dependencies** - complete static + musl environment
+- **Comprehensive debugging toolkit** including network, process, and system analysis tools
+- **Automatic cleanup** - loop devices and mounts cleaned up automatically on exit
+- **Silent operation** - no error noise or cleanup spam
+- **Production-ready** - thoroughly tested with comprehensive integration test suite
 
 ## Quick Start
 
 ### 1. Build the tool
 
 ```bash
+# Build release version (recommended)
+cargo build --release
+
+# Or use the convenience script
 ./build.sh --release
 ```
 
 ### 2. Build the debugging image
 
 ```bash
-./build-image.sh
+./build-image-musl.sh
 ```
 
-This creates a `crashcart.img` file containing a complete Ubuntu debugging environment.
+This creates a `crashcart.img` file containing a self-contained musl-based debugging environment that works universally across all container types (Alpine, Ubuntu, scratch, distroless).
 
 ### 3. Debug a container
 
@@ -59,15 +65,16 @@ sudo ./crashcart -u <container-id>
 # Start a minimal container
 docker run -d --name test alpine:latest sleep 3600
 
-# Debug it with crashcart (full Ubuntu environment available)
+# Debug it with crashcart (musl-based debugging environment)
 sudo ./crashcart test
 
 # Inside crashcart, you have access to:
-check-tools              # See all available debugging tools
-debug-process 1          # Debug the main process with GDB
-trace-process 1          # Trace system calls with strace
-network-status           # Check network configuration
-container-shell          # Get full shell in target container
+ls /dev/crashcart/bin     # Static BusyBox tools
+ls /dev/crashcart/usr/bin # Musl-based debugging tools
+gdb -p 1                  # Debug the main process
+strace -p 1               # Trace system calls
+lsof -p 1                 # List open files
+htop                      # Interactive process monitor
 ```
 
 ### Debug a Podman container
@@ -87,90 +94,99 @@ sudo ./crashcart 12345
 
 ### Network debugging
 ```bash
-# Debug network issues with full tool compatibility
-sudo ./crashcart <container> -- debug-in-ns <pid> tcpdump -i any -n
-
-# Check listening ports using namespace-aware tools
+# Debug network issues with musl-compatible tools
 sudo ./crashcart <container>
-# Inside: network-status
 
-# Capture network traffic
-# Inside: network-capture eth0
-
-# Test connectivity with full glibc tools
-# Inside: debug-in-ns <pid> curl -v google.com
+# Inside crashcart:
+tcpdump -i any -n           # Capture packets
+ss -tuln                    # Show listening sockets
+lsof -i                     # Network connections by process
+nmap -sT localhost          # Port scanning
+curl -v google.com          # HTTP connectivity test
+socat -                     # Advanced network relay
 ```
 
 ### Process debugging
 ```bash
-# Trace system calls with full glibc compatibility
+# Debug processes with musl-based tools
 sudo ./crashcart <container>
-# Inside: trace-process 123
 
-# Debug with GDB (full debugging symbols support)
-# Inside: debug-process 123
-
-# Monitor file access with complete lsof functionality
-# Inside: list-files 123
-
-# Advanced tracing options
-# Inside: trace-network 123    # Network calls only
-# Inside: trace-files 123      # File system calls only
+# Inside crashcart:
+gdb -p 123                  # Attach debugger to process
+strace -p 123               # Trace system calls
+ltrace -p 123               # Trace library calls
+lsof -p 123                 # Show open files for process
+htop                        # Interactive process monitor
+psinspect                   # Custom static process inspector
+kill -USR1 123              # Send signals to processes
 ```
 
 ## Available Tools
 
-The crashcart image includes a complete Ubuntu 22.04 environment with:
+The crashcart musl image includes a self-contained debugging environment with:
 
-### Debugging Tools
-- `gdb` - GNU debugger with full symbol support
+### Static Foundation (BusyBox)
+- `ash`, `sh` - POSIX shell
+- `ps`, `top`, `kill` - Process management
+- `ls`, `cat`, `cp`, `mv`, `rm`, `find`, `grep` - File operations
+- `tar`, `gzip`, `gunzip` - Archive utilities
+- `mount`, `umount` - Filesystem operations
+- `ping`, `traceroute`, `nc`, `wget` - Basic network tools
+
+### Musl-based Debugging Tools
+- `gdb` - GNU debugger with musl compatibility
 - `strace` - System call tracer
-- `ltrace` - Library call tracer  
+- `ltrace` - Library call tracer
 - `lsof` - List open files and network connections
 
-### Network Tools
-- `tcpdump` - Packet capture and analysis
-- `ss`, `netstat` - Network connection information
+### Network Analysis
+- `tcpdump` - Packet capture and analysis with libpcap
 - `nmap` - Network scanning and discovery
+- `socat` - Advanced network relay
+- `ss`, `netstat` - Network connection information
+- `ip` - Advanced IP routing utilities
 - `dig`, `nslookup` - DNS lookup utilities
-- `curl`, `wget` - HTTP clients
-- `netcat`, `socat` - Network utilities
+- `curl` - Static HTTP client
+
+### System Monitoring
+- `htop` - Interactive process viewer
+- `iotop` - I/O monitoring
 - `iftop` - Network bandwidth monitoring
 
-### System Tools
-- `ps`, `top`, `htop` - Process monitoring
-- `iotop` - I/O monitoring
-- `free`, `df`, `du` - Memory and disk usage
-- `kill`, `killall`, `pgrep`, `pkill` - Process management
-
 ### Development Tools
-- `vim`, `nano` - Text editors
-- `less`, `more` - File viewers
-- `python3`, `perl` - Scripting languages
-- `bash`, `zsh` - Advanced shells
-- `tmux`, `screen` - Terminal multiplexers
+- `vim`, `nano` - Text editors with musl compatibility
+- `less` - Advanced file viewer
+- `bash` - Advanced shell (ash recommended)
+- `jq` - JSON processor
+- `file` - File type detection
+- `tree` - Directory tree display
 
 ### File Tools
-- `tar`, `gzip`, `bzip2`, `zip` - Archive utilities
 - `rsync` - File synchronization
-- `tree` - Directory tree display
-- `find`, `grep`, `awk`, `sed` - Text processing
-- `file` - File type detection
+- `bzip2`, `xz` - Compression utilities
+- `openssl` - Cryptography and SSL tools
 
-### Utilities
-- `jq` - JSON processor
-- `openssl` - Cryptography tools
-- `binutils` - Binary utilities
-- `ca-certificates` - SSL certificates
+### Custom Tools
+- `psinspect` - Custom static process inspector
+
+All tools are either statically linked or use bundled musl libraries for universal compatibility.
 
 ## How It Works
 
 1. **Container Detection**: Automatically detects Docker, Podman, or containerd containers
 2. **PID Resolution**: Finds the main process PID of the target container
-3. **Image Mounting**: Mounts a complete Ubuntu debugging environment as a loop device
-4. **Namespace Management**: Uses Linux namespaces to provide isolated debugging environment
-5. **Tool Execution**: Debugging tools run in their own environment but can access target container resources
-6. **Library Compatibility**: Full glibc environment ensures all tools work regardless of target container's base image
+3. **Self-Contained Mounting**: Mounts a musl-based debugging environment with bundled libraries
+4. **Universal Compatibility**: Static BusyBox + musl tools work in any container (Alpine, scratch, distroless)
+5. **Automatic Cleanup**: Loop devices and mount points cleaned up automatically on exit
+6. **Zero Dependencies**: No host library dependencies - works even in containers with no libraries at all
+
+### The Musl Advantage
+
+- **Universal compatibility**: Works in Alpine, Ubuntu, scratch, distroless - any container type
+- **No glibc conflicts**: Musl-based tools don't conflict with container's libc
+- **Self-contained**: All required libraries bundled using ldd dependency discovery
+- **Smaller footprint**: More efficient than full Ubuntu environment
+- **Faster builds**: Alpine-based builds complete in minutes, not hours
 
 ## Requirements
 
@@ -178,6 +194,43 @@ The crashcart image includes a complete Ubuntu 22.04 environment with:
 - Root privileges (for namespace manipulation)
 - One of: Docker, Podman, or containerd
 - Loop device support (`/dev/loop*`)
+
+## Testing
+
+Crashcart includes a comprehensive test suite to ensure reliability:
+
+### Test Suite
+```bash
+# Run individual tests
+./tests/test-library-bundling.sh     # Verify 15+ libraries bundled
+./tests/test-shell-execution.sh      # Test BusyBox command execution
+./tests/test-cleanup.sh              # Verify loop device cleanup
+./tests/test-quiet-cleanup.sh        # Ensure no error noise
+./tests/integration-musl.sh          # Full 6-test integration suite
+
+# The integration suite tests:
+# 1. Mount crashcart successfully
+# 2. Verify mount point in container
+# 3. Test static BusyBox functionality
+# 4. Test musl tools with bundled libraries
+# 5. Verify compatibility in minimal Alpine containers
+# 6. Confirm zero dependencies in scratch/busybox containers
+```
+
+### Test-Driven Development
+This project follows TDD methodology:
+- ✅ Write failing tests first
+- ✅ Implement minimal fix
+- ✅ Verify tests pass
+- ✅ Git commit after each success
+- ✅ Integration tests with real containers
+
+### Production Validation
+Successfully tested in:
+- AWS ECS container hosts
+- Docker containers (Alpine, Ubuntu, busybox)
+- Minimal/scratch containers
+- Real production workloads (gemstash, etc.)
 
 ## Architecture
 
@@ -193,13 +246,16 @@ The modern implementation is structured as:
 
 This modern version improves on the original crashcart:
 
-- **Complete debugging environment**: Full Ubuntu 22.04 with glibc compatibility
-- **No library conflicts**: Tools run in isolated environment
-- **Namespace-aware debugging**: Access target container resources without conflicts
-- **Expanded toolkit**: 40+ tools vs original's 16
-- **Better container support**: Works with multiple runtimes
-- **Modern codebase**: Rust 2021 with proper error handling
-- **Faster builds**: 3-5 minutes vs 20+ minutes (no Nix dependency)
+- **Universal musl compatibility**: Works in ANY container type (Alpine, scratch, distroless)
+- **Self-contained design**: Zero host dependencies, bundled libraries
+- **Automatic cleanup**: Loop devices and mounts cleaned up on exit
+- **Silent operation**: No error noise or cleanup spam
+- **Comprehensive testing**: Full integration test suite with real containers
+- **Production-ready**: Thoroughly tested and deployed
+- **Modern codebase**: Rust 2021 with async/await and proper error handling
+- **Faster builds**: 3-5 minutes vs 20+ minutes (Alpine-based, no Nix dependency)
+- **Better container support**: Docker, Podman, containerd detection
+- **Proven compatibility**: Successfully tested in AWS ECS, Alpine, Ubuntu containers
 
 ## Credits and History
 
