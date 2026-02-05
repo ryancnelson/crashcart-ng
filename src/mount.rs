@@ -139,15 +139,15 @@ if [ -x "/tmp/mount" ]; then
         echo "Unmounted crashcart filesystem"
     fi
 
-    # Clean up directories
-    /tmp/rm -rf /dev/crashcart
+    # Clean up directories (silently, directory should be empty after unmount)
+    /tmp/rm -rf /dev/crashcart 2>/dev/null || true
 
     # Unmount tmpfs if mounted
     if /tmp/mount | /tmp/grep -q '/dev/cc-loop'; then
         /tmp/umount /dev/cc-loop
     fi
 
-    /tmp/rm -rf /dev/cc-loop
+    /tmp/rm -rf /dev/cc-loop 2>/dev/null || true
 
     # Clean up busybox and symlinks
     /tmp/rm -f /tmp/crashcart-busybox /tmp/mount /tmp/umount /tmp/mkdir /tmp/mknod /tmp/grep /tmp/rm

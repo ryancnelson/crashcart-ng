@@ -10,9 +10,9 @@
 ## Iteration Status
 
 Current Iteration: 5
-Working On: Task 5 - Update Documentation
+Working On: Task 5 - Fix Noisy Cleanup Messages
 
-🎯 **4/6 Tasks Completed** - Almost there! 🚀
+🎯 **4/7 Tasks Completed** - Fixing error noise! 🔧
 
 ---
 
@@ -105,13 +105,27 @@ Status: ✅ **COMPLETED**
 
 ---
 
-## Task 5: Update Documentation
+## Task 5: Fix Noisy Cleanup Messages
+
+Goal: Eliminate the "can't remove /dev/crashcart/..." error spam during unmount
+
+### Steps
+
+- [x] Step 1: Write test to reproduce the error noise
+- [x] Step 2: Find the source of the rm commands
+- [x] Step 3: Fix the cleanup logic to be silent
+- [x] Step 4: Run test to verify noise is gone
+- [ ] Step 5: Commit
+
+---
+
+## Task 6: Update Documentation
 
 Status: Not Started
 
 ---
 
-## Task 6: Release Preparation
+## Task 7: Release Preparation
 
 Status: Not Started
 
